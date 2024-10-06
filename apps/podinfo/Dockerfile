@@ -1,43 +1,14 @@
-FROM golang:1.21-alpine as builder
+# Use an official OpenJDK runtime as a parent image
+FROM openjdk:17-jdk-alpine
 
-ARG REVISION
+# Set the working directory inside the container
+WORKDIR /app
 
-RUN mkdir -p /podinfo/
+# Copy the JAR file from the host to the container
+COPY target/app.jar /app/app.jar
 
-WORKDIR /podinfo
+# Expose the port your application will run on (optional)
+EXPOSE 8080
 
-COPY . .
-
-RUN go mod download
-
-RUN CGO_ENABLED=0 go build -ldflags "-s -w \
-    -X github.com/stefanprodan/podinfo/pkg/version.REVISION=${REVISION}" \
-    -a -o bin/podinfo cmd/podinfo/*
-
-RUN CGO_ENABLED=0 go build -ldflags "-s -w \
-    -X github.com/stefanprodan/podinfo/pkg/version.REVISION=${REVISION}" \
-    -a -o bin/podcli cmd/podcli/*
-
-FROM alpine:3.18
-
-ARG BUILD_DATE
-ARG VERSION
-ARG REVISION
-
-LABEL maintainer="stefanprodan"
-
-RUN addgroup -S app \
-    && adduser -S -G app app \
-    && apk --no-cache add \
-    ca-certificates curl netcat-openbsd
-
-WORKDIR /home/app
-
-COPY --from=builder /podinfo/bin/podinfo .
-COPY --from=builder /podinfo/bin/podcli /usr/local/bin/podcli
-COPY ./ui ./ui
-RUN chown -R app:app ./
-
-USER app
-
-CMD ["./podinfo"]
+# Set the command to run the jar file
+ENTRYPOINT ["java", "-jar", "app.jar"]
